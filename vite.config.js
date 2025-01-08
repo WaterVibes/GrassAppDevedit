@@ -1,32 +1,59 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
+function noHashPlugin() {
+  return {
+    name: 'no-hash',
+    enforce: 'post',
+    writeBundle(options, bundle) {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const assetsDir = path.join(__dirname, 'dist', 'assets');
+      
+      // Find and rename files
+      fs.readdirSync(assetsDir).forEach(file => {
+        const filePath = path.join(assetsDir, file);
+        
+        if (file.includes('Logo-')) {
+          fs.copyFileSync(filePath, path.join(assetsDir, 'Logo.png'));
+        } else if (file.includes('main-') && file.endsWith('.css')) {
+          fs.copyFileSync(filePath, path.join(assetsDir, 'style.css'));
+        } else if (file.includes('main-') && file.endsWith('.js')) {
+          fs.copyFileSync(filePath, path.join(assetsDir, 'main.js'));
+        }
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  base: '/GrassAppSitev2/',
+  base: '/GrassAppDevedit/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
-      },
-      output: {
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const extType = info[info.length - 1];
-          if (/\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/i.test(assetInfo.name)) {
-            return `assets/media/[name]-[hash][extname]`;
-          }
-          if (/\.(png|jpe?g|gif|svg|webp|ico)(\?.*)?$/i.test(assetInfo.name)) {
-            return `assets/img/[name]-[hash][extname]`;
-          }
-          if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(assetInfo.name)) {
-            return `assets/fonts/[name]-[hash][extname]`;
-          }
-          return `assets/${extType}/[name]-[hash][extname]`;
-        }
       }
+    },
+    copyPublicDir: true
+  },
+  resolve: {
+    alias: {
+      'three': 'three',
+      '@tweenjs/tween.js': '@tweenjs/tween.js'
     }
   },
-  publicDir: 'public'
+  publicDir: 'public',
+  server: {
+    watch: {
+      usePolling: true
+    },
+    fs: {
+      strict: false,
+      allow: ['..']
+    }
+  },
+  plugins: [noHashPlugin()]
 }); 
