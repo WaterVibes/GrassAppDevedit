@@ -1,28 +1,18 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import fs from 'fs';
 
-function noHashPlugin() {
+function copyPublicAssets() {
   return {
-    name: 'no-hash',
-    enforce: 'post',
-    writeBundle(options, bundle) {
-      const fs = require('fs');
-      const path = require('path');
+    name: 'copy-public-assets',
+    writeBundle() {
+      // Ensure assets directory exists
+      if (!fs.existsSync('dist/assets')) {
+        fs.mkdirSync('dist/assets', { recursive: true });
+      }
       
-      const assetsDir = path.join(__dirname, 'dist', 'assets');
-      
-      // Find and rename files
-      fs.readdirSync(assetsDir).forEach(file => {
-        const filePath = path.join(assetsDir, file);
-        
-        if (file.includes('Logo-')) {
-          fs.copyFileSync(filePath, path.join(assetsDir, 'Logo.png'));
-        } else if (file.includes('main-') && file.endsWith('.css')) {
-          fs.copyFileSync(filePath, path.join(assetsDir, 'style.css'));
-        } else if (file.includes('main-') && file.endsWith('.js')) {
-          fs.copyFileSync(filePath, path.join(assetsDir, 'main.js'));
-        }
-      });
+      // Copy Logo.png
+      fs.copyFileSync('public/img/Logo.png', 'dist/assets/Logo.png');
     }
   };
 }
@@ -35,9 +25,27 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
+      },
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          
+          if (assetInfo.name.includes('Logo')) {
+            return 'assets/Logo.png';
+          }
+          if (ext === 'css') {
+            return 'assets/style.css';
+          }
+          if (ext === 'js') {
+            return 'assets/[name].js';
+          }
+          return `assets/[name].[ext]`;
+        }
       }
-    },
-    copyPublicDir: true
+    }
   },
   resolve: {
     alias: {
@@ -45,15 +53,5 @@ export default defineConfig({
       '@tweenjs/tween.js': '@tweenjs/tween.js'
     }
   },
-  publicDir: 'public',
-  server: {
-    watch: {
-      usePolling: true
-    },
-    fs: {
-      strict: false,
-      allow: ['..']
-    }
-  },
-  plugins: [noHashPlugin()]
+  plugins: [copyPublicAssets()]
 }); 
